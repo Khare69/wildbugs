@@ -1,0 +1,132 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  password          String
+  name              String
+  role              String              @default("user") // "user" | "expert" | "admin"
+  createdAt         DateTime            @default(now())
+  sightings         Sighting[]
+  challengeProgress ChallengeProgress[]
+  comments          Comment[]
+  verifications     Verification[]
+  badges            UserBadge[]
+  likes             SightingLike[]
+}
+
+model Species {
+  id                 Int        @id @default(autoincrement())
+  commonName         String
+  scientificName     String
+  family             String
+  description        String
+  habitat            String
+  diet               String
+  lifecycle          String
+  imageUrl           String
+  conservationStatus String
+  sightings          Sighting[]
+}
+
+model Sighting {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  speciesId     Int?
+  species       Species?       @relation(fields: [speciesId], references: [id], onDelete: SetNull)
+  photoUrl      String
+  latitude      Float
+  longitude     Float
+  aiConfidence  Float?
+  status        String         @default("pending") // "pending" | "community_verified" | "expert_verified"
+  notes         String?
+  createdAt     DateTime       @default(now())
+  comments      Comment[]
+  verifications Verification[]
+  likes         SightingLike[]
+}
+
+model SightingLike {
+  id         String   @id @default(uuid())
+  sightingId String
+  sighting   Sighting @relation(fields: [sightingId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([sightingId, userId])
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  sightingId String
+  sighting   Sighting @relation(fields: [sightingId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content    String
+  createdAt  DateTime @default(now())
+}
+
+model Verification {
+  id                 String   @id @default(uuid())
+  sightingId         String
+  sighting           Sighting @relation(fields: [sightingId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agree              Boolean  @default(true)
+  suggestedSpeciesId Int?
+  createdAt          DateTime @default(now())
+
+  @@unique([sightingId, userId])
+}
+
+model Badge {
+  id          String      @id
+  name        String
+  description String
+  icon        String
+  category    String
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model Challenge {
+  id            Int                 @id @default(autoincrement())
+  title         String
+  description   String
+  targetCount   Int
+  speciesFamily String?
+  startsAt      DateTime
+  endsAt        DateTime
+  progress      ChallengeProgress[]
+}
+
+model ChallengeProgress {
+  id          String    @id @default(uuid())
+  challengeId Int
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+
+  @@unique([challengeId, userId])
+}
